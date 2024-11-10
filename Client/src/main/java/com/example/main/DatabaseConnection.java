@@ -6,6 +6,7 @@ import com.example.model.Agency;
 
 import javax.swing.*;
 import javax.xml.datatype.XMLGregorianCalendar;
+import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.*;
@@ -15,12 +16,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import com.example.model.*;
-
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import java.io.FileNotFoundException;
 import static com.example.model.DateConversion.toXMLGregorianCalendar;
 
 public class DatabaseConnection {
 
-    public static void main(String[] args) throws MalformedURLException,  InvalidHotelCredentialsException {
+    public static void main(String[] args) throws MalformedURLException, InvalidHotelCredentialsException, SQLException {
         String url = "jdbc:mysql://localhost:3306/TP2";
         String user = "root";
         String password = "";
@@ -45,7 +50,7 @@ public class DatabaseConnection {
             URL url2 = new URL("http://localhost:8080/ServerHotelSheraton/Reservation?wsdl");
             HotelServiceReservationImplService rsImpl1 = new HotelServiceReservationImplService(url2);
             HotelServiceReservation proxyrs1 = rsImpl1.getHotelServiceReservationImplPort();
-
+/*
 
             URL url3 = new URL("http://localhost:8081/ServerMarriot/Availability?wsdl");
             HotelServiceAvailabilityImplService avImpl2 = new HotelServiceAvailabilityImplService(url3);
@@ -63,7 +68,7 @@ public class DatabaseConnection {
             HotelServiceReservation proxyrs3 = rsImpl3.getHotelServiceReservationImplPort();
             Class.forName("com.mysql.cj.jdbc.Driver");
 
-
+*/
             Connection conn = DriverManager.getConnection(url, user, password);
             System.out.println("Connection successful!");
 
@@ -137,11 +142,11 @@ public class DatabaseConnection {
                     break;
                 }
 
-                if (selectedHotel.getId() == 1 || selectedHotel.getId() == 2 || selectedHotel.getId() == 3) {
+           if (selectedHotel.getId() == 1 || selectedHotel.getId() == 2 || selectedHotel.getId() == 3) {
                     System.out.println("You selected: " + selectedHotel.getName() + " (" + selectedHotel.getStars() + " stars, " + selectedHotel.getNumberofBeds() + " beds)");
+                } else {
+                    throw new InvalidHotelCredentialsException("Invalid  hotel selected.");
                 }
-
-
             }
 
 
@@ -196,6 +201,7 @@ public class DatabaseConnection {
                                         try {
                                             System.out.println("Choose offer with id");
                                             offerid = scanner.nextInt();
+                                            if (offerid == offers.get(1).getId()){
                                             System.out.println("Add your Credit Card info:\n");
                                             System.out.println("Number: \n");
                                             int number = scanner.nextInt();
@@ -211,18 +217,21 @@ public class DatabaseConnection {
                                             if (rowsInserted > 0) {
                                                 System.out.println("A new credit card was inserted successfully!");
                                             }
+                                            }
                                         } catch (SQLException e) {
                                             throw new RuntimeException(e);
                                         }
 
                                         try {
                                             System.out.println("Reservation Confirmed " + proxyrs1.makeReservation(name, xmlstartDate, xmlendDate, String.valueOf(offerid)));
+
                                             System.out.println("Reference for your reservation");
                                             String Sql = "SELECT reference FROM Reservation";
                                             PreparedStatement add1 = conn.prepareStatement(Sql);
                                             ResultSet Rs = add1.executeQuery(Sql);
                                             Rs.next();
                                             int ref = Rs.getInt("Reference");
+                                            generatePDF(name, xmlstartDate, xmlendDate, offerid, ref);
                                             System.out.println(ref);
                                         } catch (ReservationFailedException_Exception e) {
                                             throw new RuntimeException(e);
@@ -245,110 +254,54 @@ public class DatabaseConnection {
                                 break;
                         }
 
+                    } else {
+                        System.out.println("Invalid email or phone number. Please try again.");
                     }
                     stmt.close();
                     conn.close();
+                    clientRs.close();
                 } else {
-                    System.out.println("Invalid email or phone number. Please try again.");
-                }
-                clientRs.close();
-            } else {
 
-                throw new InvalidHotelCredentialsException("Invalid agency number selected.");
+                    throw new InvalidHotelCredentialsException("Invalid agency number selected.");
+                }
             }
 
 
 
 
-        } catch (PersonException_Exception | InvalidAgencyCredentialsException_Exception |
-                 NoOfferInThisDateException_Exception | NoAvailabilityException_Exception | ClassNotFoundException |
-                 SQLException e) {
-            throw new RuntimeException(e);
+            } catch (PersonException_Exception | InvalidAgencyCredentialsException_Exception |
+                    NoOfferInThisDateException_Exception | NoAvailabilityException_Exception |
+                     SQLException e) {
+                throw new RuntimeException(e);
 
 
+            }
+        }
+
+    private static void generatePDF(String name, XMLGregorianCalendar xmlstartDate, XMLGregorianCalendar xmlendDate, int offerid, int ref) {
+        String pdfPath = "Reservation_Confirmation_" + offerid + ".pdf";
+
+        try {
+            // Initialize PDF writer and document
+            PdfWriter writer = new PdfWriter(pdfPath);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+
+            // Add content to PDF
+            document.add(new Paragraph("Reservation Confirmation"));
+            document.add(new Paragraph("Name: " + name));
+            document.add(new Paragraph("Offer ID: " + offerid));
+            document.add(new Paragraph("Reservation Reference: " + ref));
+            document.add(new Paragraph("Thank you for choosing our service!"));
+
+            document.close();
+            System.out.println("PDF generated successfully at " + pdfPath);
+        } catch (FileNotFoundException e) {
+            System.err.println("Failed to generate PDF: " + e.getMessage());
         }
     }
-}
+    }
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-/*                    switch (choice) {
-                        case "1":
-                            try {
-                                System.out.print("Enter start date (YYYY-MM-DD): \n");
-                                startDate = LocalDate.parse(scanner.nextLine(), formatter);
-                                System.out.print("Enter end date (YYYY-MM-DD): \n");
-                                endDate = LocalDate.parse(scanner.nextLine(), formatter);
-                                System.out.print("Enter the number of persons: \n");
-                                numberOfPersons = scanner.nextInt();
-                            } catch (Exception e) {
-                                System.out.println("Invalid input. Please ensure dates are in YYYY-MM-DD format.");
-                            }
-                            if (proxyav1.checkAvailability(agencyId, username, agencyPassword, xmlstartDate, xmlendDate, numberOfPersons) != null) {
-                                System.out.println("Offers Avialable");
-                                System.out.println(proxyav1.checkAvailability(agencyId, username, agencyPassword, xmlstartDate, xmlendDate, numberOfPersons));
-                                System.out.println("Would you like to make a reservation type 1, To exit type 0");
-                                int choice1 = scanner.nextInt();
-
-                                if (choice1 == 1) {
-
-                                    System.out.println("Choose offer with id");
-                                    int offerid = scanner.nextInt();
-                                    System.out.println("Add your Credit Card info:\n");
-                                    System.out.println("Number: \n");
-                                    int number = scanner.nextInt();
-                                    System.out.println("CVV: \n");
-                                    int cvv = scanner.nextInt();
-                                    String sql1 = "INSERT INTO CreditCard (client_id, name,number, cvv) VALUES (?, ?, ?, ?)";
-                                    PreparedStatement add = conn.prepareStatement(sql1);
-                                    {
-
-                                        add.setInt(1, client_id);
-                                        add.setString(2, name);
-                                        add.setInt(3, number);
-                                        add.setInt(4, cvv);
-                                        int rowsInserted = add.executeUpdate();
-                                        if (rowsInserted > 0) {
-                                            System.out.println("A new credit card was inserted successfully!");
-                                        }
-                                    }
-                                    try {
-                                        System.out.println("Reservation Confirmed " + proxyrs1.makeReservation(name, xmlstartDate, xmlendDate, String.valueOf(offerid)));
-                                        System.out.println("Reference for your reservation");
-                                        String Sql = "SELECT reference FROM Reservation";
-                                        PreparedStatement add1 = conn.prepareStatement(Sql);
-                                        ResultSet Rs = add1.executeQuery(Sql);
-                                        Rs.next();
-                                        int ref = Rs.getInt("Reference");
-                                        System.out.println(ref);
-                                    } catch (ReservationFailedException_Exception e) {
-
-                                    }
-
-                                } else {
-                                    System.out.println("GoodBye");
-                                    clientRs.close();
-                                    agencyRs.close();
-                                    stmt.close();
-                                    conn.close();
-
-
-                                }
-                            }
-                            break;
-                        default:
-                            System.out.println("Make sure you add an avialable number");
-                            break; */

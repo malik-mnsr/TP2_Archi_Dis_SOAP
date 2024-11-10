@@ -13,6 +13,7 @@ Communication between different stack is done using SOAP Technologie
 ### Breif Idea
 
 ![Alt text](SOAPwebservices.png)
+
 This implementation is based on:
  
 A. __ServerSide__

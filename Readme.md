@@ -40,6 +40,13 @@ Example:
 - Jax-WS (Java API for Web Services)
 - Spring-WS
 
+### Execution
 
+1. Clone this project
+2. Import The SQL file (DataBase File)
+3. Open Projects (Make sure you are using JDK 1.8)
+4. Start the server web services
+5. Start the client side
+6. Enjoy :)
 
 ###### MANSOUR Malik M1 GL Montpellier 07/11/2024 
